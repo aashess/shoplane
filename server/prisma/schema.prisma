@@ -6,10 +6,152 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// User Table
+model User {
+  id        Int           @id @default(autoincrement())
+  name      String
+  email     String        @unique
+  password  String
+  role      UserRole      @default(CUSTOMER)
+  createdAt DateTime      @default(now())
+  address   UserAddress[]
+  orders    Order[]
+  Cart      Cart[]
+}
+
+// something like dropDown approach for role. Like Customer or Admin
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+// UserAddress 
+model UserAddress {
+  id        Int     @id @default(autoincrement())
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int
+  line1     String
+  city      String
+  country   String
+  zip       String
+  isDefault Boolean @default(false)
+  Order     Order[]
+}
+
+model Categories {
+  id       Int       @id @default(autoincrement())
+  name     String
+  products Product[]
+}
+
+model Product {
+  id          Int               @id @default(autoincrement())
+  name        String
+  description String
+  price       Decimal
+  category    Categories        @relation(fields: [categoryId], references: [id])
+  categoryId  Int
+  variants    ProductVariants[]
+  images      ProductImages[]
+}
+
+model ProductVariants {
+  id          Int         @id @default(autoincrement())
+  product     Product     @relation(fields: [productId], references: [id])
+  productId   Int
+  variantName String
+  color       String
+  size        String
+  CartItem    CartItem[]
+  OrderItem   OrderItem[]
+}
+
+model ProductImages {
+  id        Int     @id @default(autoincrement())
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  imageUrl  String
+  altText   String?
+  sortOrder Int     @default(0)
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  user      User       @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id               Int             @id @default(autoincrement())
+  cart             Cart            @relation(fields: [cartId], references: [id])
+  cartId           Int
+  productVariant   ProductVariants @relation(fields: [productVariantId], references: [id])
+  productVariantId Int
+  quantity         Int             @default(1)
+}
+
+model Order {
+  id                Int         @id @default(autoincrement())
+  user              User        @relation(fields: [userId], references: [id])
+  userId            Int
+  totalAmount       Decimal
+  status            OrderStatus @default(PENDING)
+  shippingAddress   UserAddress @relation(fields: [shippingAddressId], references: [id])
+  shippingAddressId Int
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  items             OrderItem[]
+  payments          Payment[]
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model OrderItem {
+  id               Int             @id @default(autoincrement())
+  order            Order           @relation(fields: [orderId], references: [id])
+  orderId          Int
+  productVariant   ProductVariants @relation(fields: [productVariantId], references: [id])
+  productVariantId Int
+  quantity         Int
+  priceAtPurchase  Decimal
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  order         Order         @relation(fields: [orderId], references: [id])
+  orderId       Int
+  method        PaymentMethod
+  transactionId String?
+  status        PaymentStatus @default(PENDING)
+  amount        Decimal
+  createdAt     DateTime      @default(now())
+}
+
+enum PaymentMethod {
+  CARD
+  PAYPAL
+  COD
+  BANK
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
 }
